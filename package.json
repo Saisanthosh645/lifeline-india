@@ -1,0 +1,16 @@
+{
+  "name": "lifeline-india-root",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=lifeline-web",
+    "build": "npm run build --workspace=lifeline-web",
+    "start": "npm run start --workspace=lifeline-web",
+    "lint": "npm run lint --workspace=lifeline-web"
+  },
+  "dependencies": {
+    "firebase": "^12.16.0"
+  }
+}

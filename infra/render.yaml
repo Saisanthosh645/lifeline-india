@@ -1,0 +1,67 @@
+# Render Blueprint — LIFELINE INDIA Production Deployment
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ── API Service ──────────────────────────────────────────────────────────
+  - type: web
+    name: lifeline-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4 --log-level info
+    healthCheckPath: /health
+    envVars:
+      - key: APP_NAME
+        value: LIFELINE INDIA API
+      - key: ENVIRONMENT
+        value: production
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lifeline-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: lifeline-redis
+          type: redis
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: FRONTEND_URL
+        value: https://lifeline-india.vercel.app
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+
+  # ── Frontend Service (if deploying backend-only — Vercel is recommended for Next.js)
+  - type: web
+    name: lifeline-web
+    env: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://lifeline-api.onrender.com/api/v1
+      - key: NODE_ENV
+        value: production
+
+databases:
+  # ── PostgreSQL ───────────────────────────────────────────────────────────
+  - name: lifeline-db
+    databaseName: lifeline
+    user: lifeline
+    plan: standard  # $7/mo minimum for production
+    postgresMajorVersion: 16
+
+redis:
+  # ── Redis ───────────────────────────────────────────────────────────────
+  - name: lifeline-redis
+    plan: free  # Upgrade to paid for production
+    maxmemoryPolicy: allkeys-lru
