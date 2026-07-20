@@ -263,18 +263,23 @@ const USER_KEY = "lifeline_user";
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_KEY);
+  // Primary: localStorage. Fallback: cookie (for middleware sync on page load).
+  return localStorage.getItem(ACCESS_KEY) ?? readCookie(ACCESS_COOKIE);
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
+  // Primary: localStorage. Fallback: cookie.
+  return localStorage.getItem(REFRESH_KEY) ?? readCookie(REFRESH_COOKIE);
 }
 
 export function setTokens(access: string, refresh: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(ACCESS_KEY, access);
   localStorage.setItem(REFRESH_KEY, refresh);
+  // Keep cookie in sync so middleware always sees the current token.
+  writeCookie(ACCESS_COOKIE, access, 86400);
+  writeCookie(REFRESH_COOKIE, refresh, 2592000);
 }
 
 export function clearTokens(): void {
@@ -282,6 +287,8 @@ export function clearTokens(): void {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_KEY);
+  deleteCookie(ACCESS_COOKIE);
+  deleteCookie(REFRESH_COOKIE);
 }
 
 export function getCurrentUser(): UserPublic | null {
@@ -327,16 +334,12 @@ export function saveAuthSession(payload: AuthResponse): void {
 
   setTokens(access, refresh);
   setCurrentUser(payload.user);
-
-  // Cookies for middleware (JS-readable compromise – backend should set HttpOnly)
-  writeCookie(ACCESS_COOKIE, access, 86400); // 1 day
-  writeCookie(REFRESH_COOKIE, refresh, 2592000); // 30 days
+  // setTokens() already writes cookies, but keep this explicit for clarity.
 }
 
 export function clearAuthSession(): void {
   clearTokens();
-  deleteCookie(ACCESS_COOKIE);
-  deleteCookie(REFRESH_COOKIE);
+  // clearTokens() already deletes cookies, but keep for safety.
 }
 
 // ---------------------------------------------------------------------------

@@ -1,27 +1,45 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// In demo mode, all routes are accessible without auth.
-// The client-side code handles redirects via localStorage.
-// This middleware only protects routes in production mode.
-const protectedRoutes = ["/profile"];
+// Routes that require authentication.
+// In production mode, missing token → redirect to /auth.
+// In demo/development mode, client-side handles auth via localStorage.
+const protectedRoutes: string[] = ["/profile"];
 
-export function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname;
-  const accessToken = request.cookies.get("ll_access_token")?.value;
+// Determine if we're in demo/dev mode (no backend auth required).
+// When NEXT_PUBLIC_API_BASE_URL is not set or points to localhost, we're in demo/dev.
+function isDemoMode(): boolean {
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  return url === "" || url.includes("localhost") || url.includes("127.0.0.1");
+}
 
-  const isProtected = protectedRoutes.some((route) => path.startsWith(route));
-  
-  // In demo mode, allow access — client-side handles auth checks
-  // In production, redirect to auth if no token
-  if (isProtected && !accessToken) {
-    // Check if we're in demo mode (no backend required)
-    // Allow access — the client-side code will check localStorage
+export function middleware(request: NextRequest): NextResponse {
+  try {
+    const path = request.nextUrl.pathname;
+    const isProtected = protectedRoutes.some((route) => path.startsWith(route));
+    if (!isProtected) return NextResponse.next();
+
+    // Read token from cookie — safe: cookies.get() returns undefined if missing.
+    const accessToken = request.cookies.get("ll_access_token")?.value;
+
+    // If no token found, redirect to auth page (production) or allow through (demo).
+    if (!accessToken) {
+      if (isDemoMode()) {
+        // Demo mode: client-side JS checks localStorage instead.
+        return NextResponse.next();
+      }
+      // Production: redirect unauthenticated users to login.
+      const loginUrl = new URL("/auth", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next();
+  } catch {
+    // Defensive: if cookie parsing somehow fails, let the request through.
+    // Client-side auth will handle the redirect if needed.
     return NextResponse.next();
   }
-
-  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/profile/:path*"]
+  matcher: ["/profile/:path*"],
 };
