@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str = Field(default="noreply@lifelineindia.in")
     smtp_use_tls: bool = Field(default=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_empty_strings(cls, values: dict) -> dict:
+        """Coerce empty strings to None for optional fields to avoid Pydantic type errors."""
+        for field in ("smtp_host", "smtp_port", "smtp_username", "smtp_password"):
+            if field in values and values[field] == "":
+                values[field] = None
+        return values
 
 
 @lru_cache
