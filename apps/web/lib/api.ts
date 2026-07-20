@@ -313,6 +313,12 @@ export function setCurrentUser(user: UserPublic): void {
 const ACCESS_COOKIE = "ll_access_token";
 const REFRESH_COOKIE = "ll_refresh_token";
 
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function writeCookie(
   name: string,
   value: string,
