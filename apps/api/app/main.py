@@ -41,17 +41,17 @@ app.include_router(router, prefix="/api/v1")
 
 
 # ── Global exception handler ──────────────────────────────────────────────
-# In production, never leak stack traces to the client.
+# Never leak stack traces to the client in production or test environments.
+# In development, re-raise so FastAPI's debug handler shows a traceback.
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
-    if settings.environment == "production":
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"},
-        )
-    # In development, re-raise so FastAPI's debug handler shows the traceback.
-    raise exc
+    if settings.environment == "development":
+        raise exc
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 
 @app.on_event("startup")
