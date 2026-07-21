@@ -47,7 +47,7 @@ class OTPVerifyRequest(BaseModel):
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: str = Field(..., description="User identifier")
     email: str
     full_name: str
     role: str

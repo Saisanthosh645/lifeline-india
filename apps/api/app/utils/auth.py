@@ -39,7 +39,16 @@ async def get_current_user(
     user = await repo.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return UserResponse.model_validate(user)
+    return UserResponse.model_validate(
+        {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "is_verified": user.is_verified,
+            "is_active": user.is_active,
+        }
+    )
 
 
 async def require_role(*roles: str):

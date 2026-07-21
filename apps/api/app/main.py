@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,10 +16,25 @@ import app.models.auth  # noqa: F401
 logger = logging.getLogger(__name__)
 configure_logging()
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    logger.info("Starting Lifeline India API (environment=%s)", settings.environment)
+    await redis_client.initialize()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Startup complete")
+    try:
+        yield
+    finally:
+        logger.info("Shutting down Lifeline India API")
+        await redis_client.close()
+
+
 app = FastAPI(
     title="Lifeline India API",
     description="Production-ready emergency healthcare backend",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────
@@ -52,21 +68,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         status_code=500,
         content={"detail": "Internal server error"},
     )
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    logger.info("Starting Lifeline India API (environment=%s)", settings.environment)
-    await redis_client.initialize()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Startup complete")
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    logger.info("Shutting down Lifeline India API")
-    await redis_client.close()
 
 
 @app.get("/health")

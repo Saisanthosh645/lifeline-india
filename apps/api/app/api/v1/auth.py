@@ -32,7 +32,16 @@ async def register(payload: RegisterRequest, service: AuthService = Depends(get_
     return AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        user=UserResponse.model_validate(user),
+        user=UserResponse.model_validate(
+            {
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_verified": user.is_verified,
+                "is_active": user.is_active,
+            }
+        ),
     )
 
 
@@ -63,7 +72,16 @@ async def login(payload: LoginRequest, service: AuthService = Depends(get_auth_s
     return AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        user=UserResponse.model_validate(user),
+        user=UserResponse.model_validate(
+            {
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_verified": user.is_verified,
+                "is_active": user.is_active,
+            }
+        ),
     )
 
 
@@ -76,7 +94,16 @@ async def refresh(payload: RefreshRequest, service: AuthService = Depends(get_au
     return AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        user=UserResponse.model_validate(user),
+        user=UserResponse.model_validate(
+            {
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_verified": user.is_verified,
+                "is_active": user.is_active,
+            }
+        ),
     )
 
 
@@ -115,4 +142,13 @@ async def reset_password(payload: ResetPasswordRequest, service: AuthService = D
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: UserResponse = Depends(get_current_user)) -> UserResponse:
-    return user
+    return UserResponse.model_validate(
+        {
+            "id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "is_verified": user.is_verified,
+            "is_active": user.is_active,
+        }
+    )

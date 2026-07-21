@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token, hash_code, hash_password, hash_token, send_otp_email, verify_password
-from app.models.auth import OTPCode, RefreshToken, User
+from app.models.auth import User
 from app.repositories.auth_repository import AuthRepository
 
 
@@ -37,6 +36,9 @@ class AuthService:
     def _create_refresh_token(self) -> str:
         return create_refresh_token()
 
+    def _send_email(self, email: str, code: str) -> None:
+        return send_otp_email(email, code)
+
     async def _rate_limited(self, key: str, limit: int = 5, window_seconds: int = 60) -> bool:
         try:
             current = await self.redis_client.incr(key)
@@ -60,7 +62,7 @@ class AuthService:
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         await self.repo.create_otp(user_id=user.id, code_hash=otp_hash, expires_at=expires_at)
         await self.session.commit()
-        await self._send_email(user.email, code)
+        self._send_email(user.email, code)
         access_token = self._create_access_token(user)
         refresh_token = self._create_refresh_token()
         token_hash = self._hash_token(refresh_token)
@@ -106,6 +108,8 @@ class AuthService:
         send_otp_email(user.email, code)
 
     async def login(self, email: str, password: str) -> tuple[User, str, str]:
+        if await self._rate_limited(f"login:{email}", limit=5, window_seconds=60):
+            raise ValueError("Too many login attempts")
         user = await self.repo.get_user_by_email(email)
         if not user:
             raise ValueError("Invalid credentials")
@@ -166,15 +170,19 @@ class AuthService:
         send_otp_email(user.email, code)
 
     async def reset_password(self, token: str, new_password: str) -> None:
-        otp = await self.repo.get_latest_otp("reset")
-        if otp and otp.code_hash == self._hash_code(token):
-            user = await self.repo.get_user_by_id(otp.user_id)
-            if user:
-                await self.repo.update_password(user, self._hash_password(new_password))
-                await self.repo.delete_otp(otp)
-                await self.session.commit()
-                return
-        raise ValueError("Invalid reset token")
+        otp = await self.repo.get_latest_otp_for_purpose("password_reset")
+        if not otp:
+            raise ValueError("Invalid reset token")
+        if otp.expires_at < datetime.now(timezone.utc):
+            raise ValueError("Reset token expired")
+        if otp.code_hash != self._hash_code(token):
+            raise ValueError("Invalid reset token")
+        user = await self.repo.get_user_by_id(otp.user_id)
+        if not user:
+            raise ValueError("User not found")
+        await self.repo.update_password(user, self._hash_password(new_password))
+        await self.repo.delete_otp(otp)
+        await self.session.commit()
 
     async def get_current_user(self, user_id: str) -> User:
         user = await self.repo.get_user_by_id(user_id)

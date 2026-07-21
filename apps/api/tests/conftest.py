@@ -13,10 +13,11 @@ import app.models.auth  # noqa: F401
 from app.main import app
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def db_engine():
     engine = create_async_engine(settings.database_url, echo=False)
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
@@ -30,7 +31,7 @@ async def db_session(db_engine) -> AsyncIterator[AsyncSession]:
 
 
 @pytest.fixture
-def client():
+def client(db_engine):
     from httpx import ASGITransport, AsyncClient
 
     transport = ASGITransport(app=app)

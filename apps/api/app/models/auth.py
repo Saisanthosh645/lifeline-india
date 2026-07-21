@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String
@@ -57,9 +56,8 @@ class OTPCode(Base):
     code_hash: Mapped[str] = mapped_column("otp_hash", String(255), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     attempt_count: Mapped[int] = mapped_column("attempts", default=0, nullable=False)
+    purpose: Mapped[str] = mapped_column(String(50), nullable=False, default="email_verification")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     user: Mapped[User] = relationship(back_populates="otp_codes")
-
-    purpose: str = "email_verification"

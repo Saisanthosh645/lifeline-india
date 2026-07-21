@@ -1,24 +1,38 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "dummy-api-key-for-build",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "fleet-robot-x2l12.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "fleet-robot-x2l12",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "fleet-robot-x2l12.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:1234567890:web:1234567890"
-};
+const rawApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
+const rawAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim() || "";
+const rawProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim() || "";
+const rawStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || "";
+const rawMessagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim() || "";
+const rawAppId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim() || "";
 
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+const isConfigured = Boolean(
+  rawApiKey &&
+    rawApiKey !== "dummy-api-key-for-build" &&
+    rawApiKey !== "your-api-key-here" &&
+    rawAuthDomain &&
+    rawProjectId &&
+    rawAppId
+);
 
-// Verify config function to help debug
+const firebaseConfig = isConfigured
+  ? {
+      apiKey: rawApiKey,
+      authDomain: rawAuthDomain,
+      projectId: rawProjectId,
+      storageBucket: rawStorageBucket || undefined,
+      messagingSenderId: rawMessagingSenderId || undefined,
+      appId: rawAppId,
+    }
+  : null;
+
+// Initialize Firebase only when the required web config is present.
+const app = firebaseConfig ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()) : null;
+export const auth = app ? getAuth(app) : null;
+export const googleProvider = app ? new GoogleAuthProvider() : null;
+
 export function isFirebaseConfigured(): boolean {
-  return (
-    !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "dummy-api-key-for-build"
-  );
+  return isConfigured;
 }
