@@ -32,8 +32,18 @@ class AuthRepository:
         result = await self.session.execute(select(User).where(User.id == self._coerce_uuid(user_id)))
         return result.scalar_one_or_none()
 
-    async def create_refresh_token(self, *, user_id: str | uuid.UUID, token_hash: str, expires_at: datetime) -> RefreshToken:
-        token = RefreshToken(user_id=self._coerce_uuid(user_id), token_hash=token_hash, expires_at=expires_at)
+    async def create_refresh_token(
+        self,
+        *,
+        user_id: str | uuid.UUID,
+        token_hash: str,
+        expires_at: datetime,
+    ) -> RefreshToken:
+        token = RefreshToken(
+            user_id=self._coerce_uuid(user_id),
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
         self.session.add(token)
         await self.session.flush()
         return token
@@ -47,14 +57,27 @@ class AuthRepository:
         await self.session.flush()
 
     async def revoke_all_user_tokens(self, user_id: str | uuid.UUID) -> None:
-        result = await self.session.execute(select(RefreshToken).where(RefreshToken.user_id == self._coerce_uuid(user_id)))
+        result = await self.session.execute(
+            select(RefreshToken).where(RefreshToken.user_id == self._coerce_uuid(user_id))
+        )
         tokens = result.scalars().all()
         for token in tokens:
             token.revoked_at = datetime.now(timezone.utc)
         await self.session.flush()
 
-    async def create_otp(self, *, user_id: str | uuid.UUID, code_hash: str, expires_at: datetime, purpose: str = "email_verification") -> OTPCode:
-        otp = OTPCode(user_id=self._coerce_uuid(user_id), code_hash=code_hash, expires_at=expires_at)
+    async def create_otp(
+        self,
+        *,
+        user_id: str | uuid.UUID,
+        code_hash: str,
+        expires_at: datetime,
+        purpose: str = "email_verification",
+    ) -> OTPCode:
+        otp = OTPCode(
+            user_id=self._coerce_uuid(user_id),
+            code_hash=code_hash,
+            expires_at=expires_at,
+        )
         otp.purpose = purpose
         self.session.add(otp)
         await self.session.flush()

@@ -7,7 +7,15 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token, hash_code, hash_password, hash_token, send_otp_email, verify_password
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_code,
+    hash_password,
+    hash_token,
+    send_otp_email,
+    verify_password,
+)
 from app.models.auth import User
 from app.repositories.auth_repository import AuthRepository
 
@@ -53,7 +61,11 @@ class AuthService:
             raise ValueError("Email already registered")
         if await self._rate_limited(f"register:{email}", limit=3, window_seconds=60):
             raise ValueError("Too many registration attempts")
-        user = await self.repo.create_user(email=email, full_name=full_name, hashed_password=self._hash_password(password))
+        user = await self.repo.create_user(
+            email=email,
+            full_name=full_name,
+            hashed_password=self._hash_password(password),
+        )
         if settings.environment == "test":
             user.is_verified = True
         await self.session.commit()
@@ -165,7 +177,12 @@ class AuthService:
         existing = await self.repo.get_latest_otp(user.id)
         if existing:
             await self.repo.delete_otp(existing)
-        await self.repo.create_otp(user_id=user.id, code_hash=code_hash, expires_at=expires_at, purpose="password_reset")
+        await self.repo.create_otp(
+            user_id=user.id,
+            code_hash=code_hash,
+            expires_at=expires_at,
+            purpose="password_reset",
+        )
         await self.session.commit()
         send_otp_email(user.email, code)
 
@@ -189,4 +206,3 @@ class AuthService:
         if not user:
             raise ValueError("User not found")
         return user
-

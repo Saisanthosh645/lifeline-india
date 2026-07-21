@@ -11,10 +11,11 @@ from app.core.logging import configure_logging
 from app.core.redis import redis_client
 from app.db.base import Base
 from app.db.session import check_database_connection, check_redis_connection, engine
-import app.models.auth  # noqa: F401
+import app.models.auth as _auth_models  # noqa: F401
 
 logger = logging.getLogger(__name__)
 configure_logging()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):

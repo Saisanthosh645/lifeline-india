@@ -21,10 +21,21 @@ from app.utils.auth import get_current_user, get_current_user_id
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegisterRequest, service: AuthService = Depends(get_auth_service)) -> AuthResponse:
+@router.post(
+    "/register",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    payload: RegisterRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
     try:
-        user, access_token, refresh_token = await service.register(payload.email, payload.password, payload.full_name)
+        user, access_token, refresh_token = await service.register(
+            payload.email,
+            payload.password,
+            payload.full_name,
+        )
     except ValueError as exc:
         if str(exc) == "Email already registered":
             raise HTTPException(status_code=409, detail="Email already registered") from exc
@@ -46,7 +57,10 @@ async def register(payload: RegisterRequest, service: AuthService = Depends(get_
 
 
 @router.post("/verify-email", response_model=MessageResponse)
-async def verify_email(payload: OTPVerifyRequest, service: AuthService = Depends(get_auth_service)) -> MessageResponse:
+async def verify_email(
+    payload: OTPVerifyRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
     try:
         await service.verify_email(payload.email, payload.code)
     except ValueError as exc:
@@ -55,7 +69,10 @@ async def verify_email(payload: OTPVerifyRequest, service: AuthService = Depends
 
 
 @router.post("/resend-otp", response_model=MessageResponse)
-async def resend_otp(payload: ForgotPasswordRequest, service: AuthService = Depends(get_auth_service)) -> MessageResponse:
+async def resend_otp(
+    payload: ForgotPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
     try:
         await service.resend_otp(payload.email)
     except ValueError as exc:
@@ -64,7 +81,10 @@ async def resend_otp(payload: ForgotPasswordRequest, service: AuthService = Depe
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(payload: LoginRequest, service: AuthService = Depends(get_auth_service)) -> AuthResponse:
+async def login(
+    payload: LoginRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
     try:
         user, access_token, refresh_token = await service.login(payload.email, payload.password)
     except ValueError as exc:
@@ -86,7 +106,10 @@ async def login(payload: LoginRequest, service: AuthService = Depends(get_auth_s
 
 
 @router.post("/refresh", response_model=AuthResponse)
-async def refresh(payload: RefreshRequest, service: AuthService = Depends(get_auth_service)) -> AuthResponse:
+async def refresh(
+    payload: RefreshRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
     try:
         user, access_token, refresh_token = await service.refresh(payload.refresh_token)
     except ValueError as exc:
@@ -108,7 +131,10 @@ async def refresh(payload: RefreshRequest, service: AuthService = Depends(get_au
 
 
 @router.post("/logout", response_model=MessageResponse)
-async def logout(payload: LogoutRequest, service: AuthService = Depends(get_auth_service)) -> MessageResponse:
+async def logout(
+    payload: LogoutRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
     try:
         await service.logout(payload.refresh_token)
     except ValueError as exc:
@@ -117,13 +143,19 @@ async def logout(payload: LogoutRequest, service: AuthService = Depends(get_auth
 
 
 @router.post("/logout-all", response_model=MessageResponse)
-async def logout_all(user_id: str = Depends(get_current_user_id), service: AuthService = Depends(get_auth_service)) -> MessageResponse:
+async def logout_all(
+    user_id: str = Depends(get_current_user_id),
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
     await service.logout_all(user_id)
     return MessageResponse(message="Logged out from all devices")
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-async def forgot_password(payload: ForgotPasswordRequest, service: AuthService = Depends(get_auth_service)) -> MessageResponse:
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
     try:
         await service.forgot_password(payload.email)
     except ValueError as exc:
@@ -132,7 +164,10 @@ async def forgot_password(payload: ForgotPasswordRequest, service: AuthService =
 
 
 @router.post("/reset-password", response_model=MessageResponse)
-async def reset_password(payload: ResetPasswordRequest, service: AuthService = Depends(get_auth_service)) -> MessageResponse:
+async def reset_password(
+    payload: ResetPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
     try:
         await service.reset_password(payload.token, payload.new_password)
     except ValueError as exc:
