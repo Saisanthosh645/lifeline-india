@@ -5,7 +5,6 @@ from redis.exceptions import RedisError
 
 from app.core.config import settings
 
-
 logger = logging.getLogger(__name__)
 
 

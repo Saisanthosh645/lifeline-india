@@ -85,17 +85,13 @@ class AuthRepository:
 
     async def get_latest_otp(self, user_id: str | uuid.UUID) -> OTPCode | None:
         result = await self.session.execute(
-            select(OTPCode)
-            .where(OTPCode.user_id == self._coerce_uuid(user_id))
-            .order_by(OTPCode.created_at.desc())
+            select(OTPCode).where(OTPCode.user_id == self._coerce_uuid(user_id)).order_by(OTPCode.created_at.desc())
         )
         return result.scalar_one_or_none()
 
     async def get_latest_otp_for_purpose(self, purpose: str) -> OTPCode | None:
         result = await self.session.execute(
-            select(OTPCode)
-            .where(OTPCode.purpose == purpose)
-            .order_by(OTPCode.created_at.desc())
+            select(OTPCode).where(OTPCode.purpose == purpose).order_by(OTPCode.created_at.desc())
         )
         return result.scalar_one_or_none()
 
