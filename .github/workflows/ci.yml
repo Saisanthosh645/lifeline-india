@@ -137,6 +137,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lowercase image metadata
+        run: |
+          REPO="${{ github.repository }}"
+          echo "LOWER_REPO=${REPO,,}" >> $GITHUB_ENV
+        shell: bash
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -153,7 +159,7 @@ jobs:
         with:
           context: apps/api
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/api:latest,${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.LOWER_REPO }}/api:latest,${{ env.REGISTRY }}/${{ env.LOWER_REPO }}/api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -162,14 +168,14 @@ jobs:
         with:
           context: apps/web
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/web:latest,${{ env.REGISTRY }}/${{ github.repository }}/web:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.LOWER_REPO }}/web:latest,${{ env.REGISTRY }}/${{ env.LOWER_REPO }}/web:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ env.REGISTRY }}/${{ github.repository }}/api:latest'
+          image-ref: '${{ env.REGISTRY }}/${{ env.LOWER_REPO }}/api:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
