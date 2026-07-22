@@ -11,6 +11,10 @@
     "lint": "npm run lint --workspace=lifeline-web"
   },
   "dependencies": {
+    "es-abstract": "^1.24.0",
     "firebase": "^12.16.0"
+  },
+  "overrides": {
+    "es-abstract": "^1.24.0"
   }
 }
