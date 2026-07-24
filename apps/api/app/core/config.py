@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,32 +19,8 @@ class Settings(BaseSettings):
     smtp_port: int | None = None
     smtp_username: str | None = None
     smtp_password: str | None = None
-    smtp_from_email: str = Field(default="noreply@lifelineindia.in")
+    smtp_from_email: str = Field(default="raminisaisanthosh@gmail.com")
     smtp_use_tls: bool = Field(default=True)
-
-    @model_validator(mode="before")
-    @classmethod
-    def coerce_empty_strings(cls, values: dict) -> dict:
-        """Coerce empty strings to None for optional fields to avoid Pydantic type errors."""
-        for field in ("smtp_host", "smtp_port", "smtp_username", "smtp_password"):
-            if field in values and values[field] == "":
-                values[field] = None
-        return values
-
-    @model_validator(mode="after")
-    def ensure_async_driver(self) -> "Settings":
-        """
-        Render provides DATABASE_URL as postgresql://user:pass@host/db
-        but asyncpg requires postgresql+asyncpg://.
-
-        This validator converts the scheme only if the +asyncpg driver is
-        not already present, preventing duplicate prefix issues (e.g.
-        postgresql+asyncpg+asyncpg://).
-        """
-        url = self.database_url
-        if url and url.startswith("postgresql://"):
-            self.database_url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return self
 
 
 @lru_cache
