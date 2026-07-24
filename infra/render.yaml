@@ -48,15 +48,25 @@ services:
   - type: web
     name: lifeline-web
     env: node
-    rootDir: apps/web
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    healthCheckPath: /health
+    buildCommand: npm ci && npm run build --workspace=lifeline-web
+    startCommand: npx next start -p $PORT -H 0.0.0.0
     envVars:
-      - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://lifeline-india.onrender.com/api/v1
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://lifeline-india.onrender.com/api/v1
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        value: AIzaSyBc4WdNo1jhZ1fJxXeiLOFCO0upEMXMTeI
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        value: lifeline-india-66707.firebaseapp.com
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        value: lifeline-india-66707
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        value: lifeline-india-66707.firebasestorage.app
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        value: "857541747923"
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        value: 1:857541747923:web:6bbfe05b734cf41cb66026
 
 databases:
   # ── PostgreSQL ───────────────────────────────────────────────────────────
