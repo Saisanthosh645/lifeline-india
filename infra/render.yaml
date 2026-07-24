@@ -4,7 +4,7 @@
 services:
   # ── API Service ──────────────────────────────────────────────────────────
   - type: web
-    name: lifeline-api
+    name: lifeline-india
     env: python
     rootDir: apps/api
     buildCommand: pip install -r requirements.txt
@@ -30,7 +30,7 @@ services:
       - key: REFRESH_TOKEN_EXPIRE_DAYS
         value: 30
       - key: FRONTEND_URL
-        value: https://lifeline-india.vercel.app
+        value: https://lifeline-web.onrender.com
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -43,6 +43,20 @@ services:
         value: noreply@lifelineindia.in
       - key: SMTP_USE_TLS
         value: true
+
+  # ── Frontend (Next.js) ────────────────────────────────────────────────────
+  - type: web
+    name: lifeline-web
+    env: node
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://lifeline-india.onrender.com/api/v1
+      - key: NODE_ENV
+        value: production
 
 databases:
   # ── PostgreSQL ───────────────────────────────────────────────────────────
