@@ -67,9 +67,50 @@ except OSError:
   exit 1
 }
 
+# ── Read PostgreSQL host and port from DATABASE_URL ─────────────────────
+DB_HOST_PORT=$(python - <<'PY'
+import os
+from urllib.parse import urlparse
+
+url = os.environ.get("DATABASE_URL")
+if not url:
+    raise SystemExit("DATABASE_URL is not configured")
+
+url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
+parsed = urlparse(url)
+
+if not parsed.hostname:
+    raise SystemExit("DATABASE_URL is invalid")
+
+print(parsed.hostname, parsed.port or 5432)
+PY
+)
+
+read -r DB_HOST DB_PORT <<< "$DB_HOST_PORT"
+
+# ── Read Redis host and port from REDIS_URL ─────────────────────────────
+REDIS_HOST_PORT=$(python - <<'PY'
+import os
+from urllib.parse import urlparse
+
+url = os.environ.get("REDIS_URL")
+if not url:
+    raise SystemExit("REDIS_URL is not configured")
+
+parsed = urlparse(url)
+
+if not parsed.hostname:
+    raise SystemExit("REDIS_URL is invalid")
+
+print(parsed.hostname, parsed.port or 6379)
+PY
+)
+
+read -r REDIS_HOST REDIS_PORT <<< "$REDIS_HOST_PORT"
+
 # ── Wait for dependencies ────────────────────────────────────────────────
-wait_for_db "${DB_HOST:-db}" "${DB_PORT:-5432}"
-wait_for_redis "${REDIS_HOST:-redis}" "${REDIS_PORT:-6379}"
+wait_for_db "$DB_HOST" "$DB_PORT"
+wait_for_redis "$REDIS_HOST" "$REDIS_PORT"
 
 # ── Run Alembic migrations (idempotent) ──────────────────────────────────
 echo "[entrypoint] Running Alembic migrations..."
