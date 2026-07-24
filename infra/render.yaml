@@ -6,9 +6,11 @@ services:
   - type: web
     name: lifeline-api
     env: python
+    rootDir: apps/api
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4 --log-level info
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -22,7 +24,7 @@ services:
           type: redis
           property: connectionString
       - key: SECRET_KEY
-        sync: false  # Set manually in Render dashboard
+        generateValue: true
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
       - key: REFRESH_TOKEN_EXPIRE_DAYS
@@ -42,28 +44,16 @@ services:
       - key: SMTP_USE_TLS
         value: true
 
-  # ── Frontend Service (if deploying backend-only — Vercel is recommended for Next.js)
-  - type: web
-    name: lifeline-web
-    env: node
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://lifeline-api.onrender.com/api/v1
-      - key: NODE_ENV
-        value: production
-
 databases:
   # ── PostgreSQL ───────────────────────────────────────────────────────────
   - name: lifeline-db
     databaseName: lifeline
     user: lifeline
-    plan: standard  # $7/mo minimum for production
+    plan: standard
     postgresMajorVersion: 16
 
 redis:
   # ── Redis ───────────────────────────────────────────────────────────────
   - name: lifeline-redis
-    plan: free  # Upgrade to paid for production
+    plan: free
     maxmemoryPolicy: allkeys-lru

@@ -17,10 +17,29 @@ logger = logging.getLogger(__name__)
 configure_logging()
 
 
+async def run_migrations() -> None:
+    """Run Alembic migrations at startup.
+
+    Render's native Python platform does not support a separate pre-deploy
+    command, so we run migrations here during the lifespan startup.  The call
+    is idempotent — Alembic tracks which migrations have already been applied.
+    """
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
+    except Exception as exc:
+        logger.warning("Alembic migration failed (non-fatal at startup): %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("Starting Lifeline India API (environment=%s)", settings.environment)
     await redis_client.initialize()
+    await run_migrations()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Startup complete")

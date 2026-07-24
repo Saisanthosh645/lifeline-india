@@ -31,6 +31,21 @@ class Settings(BaseSettings):
                 values[field] = None
         return values
 
+    @model_validator(mode="after")
+    def ensure_async_driver(self) -> "Settings":
+        """
+        Render provides DATABASE_URL as postgresql://user:pass@host/db
+        but asyncpg requires postgresql+asyncpg://.
+
+        This validator converts the scheme only if the +asyncpg driver is
+        not already present, preventing duplicate prefix issues (e.g.
+        postgresql+asyncpg+asyncpg://).
+        """
+        url = self.database_url
+        if url and url.startswith("postgresql://"):
+            self.database_url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:
