@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, User, Sparkles, X, AlertCircle, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { demoSignup, demoLogin, demoGoogleLogin, demoForgotPassword } from "@/lib/auth/demo-auth";
+import { firebaseResolveRedirectLogin } from "@/lib/auth/firebase-auth";
 import { useLifeline } from "@/lib/state-engine";
 
 type Props = {
@@ -30,6 +31,28 @@ export function AuthModal({ open, onClose, mode, onModeChange }: Props) {
       setSuccess("");
     }
   }, [mode, open]);
+
+  useEffect(() => {
+    const finishRedirectLogin = async () => {
+      if (!open) return;
+
+      try {
+        const user = await firebaseResolveRedirectLogin();
+        if (!user) return;
+
+        engineLogin(user.full_name, user.email, user.phone || "", user.photoUrl);
+        onClose();
+
+        if (typeof window !== "undefined" && window.location.pathname === "/auth") {
+          window.location.href = "/profile";
+        }
+      } catch (err: any) {
+        setError(err?.message || "Google sign-in could not be completed");
+      }
+    };
+
+    void finishRedirectLogin();
+  }, [engineLogin, onClose, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +93,7 @@ export function AuthModal({ open, onClose, mode, onModeChange }: Props) {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
+      setError(err?.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -91,7 +114,7 @@ export function AuthModal({ open, onClose, mode, onModeChange }: Props) {
         window.location.href = "/profile";
       }
     } catch (err: any) {
-      setError(err.message || "Google login failed");
+      setError(err?.message || "Google login failed");
     } finally {
       setLoading(false);
     }

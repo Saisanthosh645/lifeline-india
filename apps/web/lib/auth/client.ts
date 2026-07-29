@@ -14,7 +14,7 @@ import type {
 export const authClient = {
   // ── Auth ──────────────────────────────────────────────────────────────
   signup: (payload: { full_name: string; email: string; password: string; role?: string }) =>
-    api.post<AuthResponse>("/auth/signup", payload).then((r) => r.data),
+    api.post<AuthResponse>("/auth/register", payload).then((r) => r.data),
 
   login: (payload: { email: string; password: string }) =>
     api.post<AuthResponse>("/auth/login", payload).then((r) => r.data),

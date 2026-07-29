@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, browserLocalPersistence, setPersistence } from "firebase/auth";
 
 const rawApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim() || "";
 const rawAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim() || "";
@@ -31,7 +31,22 @@ const firebaseConfig = isConfigured
 // Initialize Firebase only when the required web config is present.
 const app = firebaseConfig ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()) : null;
 export const auth = app ? getAuth(app) : null;
-export const googleProvider = app ? new GoogleAuthProvider() : null;
+export const googleProvider = app
+  ? (() => {
+      const provider = new GoogleAuthProvider();
+      provider.addScope("profile");
+      provider.addScope("email");
+      provider.setCustomParameters({
+        prompt: "select_account",
+        access_type: "offline",
+      });
+      return provider;
+    })()
+  : null;
+
+if (auth) {
+  void setPersistence(auth, browserLocalPersistence);
+}
 
 export function isFirebaseConfigured(): boolean {
   return isConfigured;

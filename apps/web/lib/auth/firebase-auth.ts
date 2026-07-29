@@ -5,9 +5,10 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithPopup,
+  signInWithRedirect,
   confirmPasswordReset,
   updateProfile,
-  User as FirebaseUser
+  getRedirectResult,
 } from "firebase/auth";
 import { auth, googleProvider, isFirebaseConfigured } from "./firebase";
 
@@ -38,6 +39,32 @@ function createFallbackSession(email: string, fullName: string, phone = "", isVe
     is_active: true,
     isLoggedIn: true,
   };
+}
+
+function getFirebaseErrorMessage(error: unknown, fallback = "Authentication failed"): string {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = String((error as { code?: string }).code || "");
+    switch (code) {
+      case "auth/popup-blocked":
+        return "Popup was blocked. Please allow popups and try again.";
+      case "auth/popup-closed-by-user":
+        return "Google sign-in was cancelled.";
+      case "auth/account-exists-with-different-credential":
+        return "This account already exists with a different sign-in method.";
+      case "auth/unauthorized-domain":
+        return "This domain is not authorized for Google sign-in. Please contact the administrator.";
+      case "auth/network-request-failed":
+        return "Network error. Check your internet connection and try again.";
+      default:
+        return fallback;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 export async function firebaseSignup(fullName: string, email: string, password: string): Promise<FirebaseUserSession> {
@@ -97,14 +124,54 @@ export async function firebaseLogin(email: string, password: string): Promise<Fi
  */
 export async function firebaseGoogleLogin(): Promise<FirebaseUserSession> {
   if (!isFirebaseConfigured() || !auth || !googleProvider) {
-    console.warn("Firebase is not configured; using a local demo session for Google sign-in.");
-    return createFallbackSession("google-user@demo.local", "Google Demo User", "", true);
+    throw new Error("Google sign-in is not available because Firebase is not configured for this environment.");
   }
 
-  const userCredential = await signInWithPopup(auth, googleProvider);
-  const user = userCredential.user;
+  try {
+    const userCredential = await signInWithPopup(auth, googleProvider);
+    const user = userCredential.user;
 
-  const sessionUser: FirebaseUserSession = {
+    const sessionUser: FirebaseUserSession = {
+      id: user.uid,
+      full_name: user.displayName || "Google User",
+      email: user.email || "",
+      phone: user.phoneNumber || "",
+      role: "citizen",
+      is_verified: user.emailVerified,
+      is_active: true,
+      photoUrl: user.photoURL || undefined,
+      isLoggedIn: true,
+    };
+
+    return sessionUser;
+  } catch (error) {
+    const message = getFirebaseErrorMessage(error, "Google sign-in failed");
+
+    if (typeof window !== "undefined" && message.includes("Popup was blocked")) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        throw new Error("Redirecting to Google for account selection...");
+      } catch {
+        // Redirect attempt failed; surface the original error below.
+      }
+    }
+
+    throw new Error(message);
+  }
+}
+
+export async function firebaseResolveRedirectLogin(): Promise<FirebaseUserSession | null> {
+  if (!isFirebaseConfigured() || !auth || !googleProvider) {
+    return null;
+  }
+
+  const result = await getRedirectResult(auth);
+  if (!result?.user) {
+    return null;
+  }
+
+  const user = result.user;
+  return {
     id: user.uid,
     full_name: user.displayName || "Google User",
     email: user.email || "",
@@ -115,8 +182,6 @@ export async function firebaseGoogleLogin(): Promise<FirebaseUserSession> {
     photoUrl: user.photoURL || undefined,
     isLoggedIn: true,
   };
-
-  return sessionUser;
 }
 
 /**
