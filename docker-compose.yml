@@ -47,11 +47,11 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-raminisaisanthosh@gmail.com}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-mgchfqaybmpxdcvo}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-raminisaisanthosh@gmail.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@lifelineindia.in}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
     ports:
       - "8000:8000"
