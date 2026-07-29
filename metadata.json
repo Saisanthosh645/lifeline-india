@@ -1,0 +1,10 @@
+{
+  "name": "Lifeline India",
+  "description": "India's emergency healthcare operating layer for citizens, hospitals, blood banks and responders.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

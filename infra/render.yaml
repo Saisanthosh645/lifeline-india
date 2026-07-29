@@ -1,0 +1,83 @@
+# Render Blueprint — LIFELINE INDIA Production Deployment
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ── API Service ──────────────────────────────────────────────────────────
+  - type: web
+    name: lifeline-india
+    env: python
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lifeline-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: lifeline-redis
+          type: redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 30
+      - key: FRONTEND_URL
+        value: https://lifeline-web.onrender.com
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        value: noreply@lifelineindia.in
+      - key: SMTP_USE_TLS
+        value: true
+
+  # ── Frontend (Next.js) ────────────────────────────────────────────────────
+  - type: web
+    name: lifeline-web
+    env: node
+    buildCommand: npm ci && npm run build --workspace=lifeline-web
+    startCommand: npx next start -p $PORT -H 0.0.0.0
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://lifeline-india.onrender.com/api/v1
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        value: AIzaSyBc4WdNo1jhZ1fJxXeiLOFCO0upEMXMTeI
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        value: lifeline-india-66707.firebaseapp.com
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        value: lifeline-india-66707
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        value: lifeline-india-66707.firebasestorage.app
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        value: "857541747923"
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        value: 1:857541747923:web:6bbfe05b734cf41cb66026
+
+databases:
+  # ── PostgreSQL ───────────────────────────────────────────────────────────
+  - name: lifeline-db
+    databaseName: lifeline
+    user: lifeline
+    plan: standard
+    postgresMajorVersion: 16
+
+redis:
+  # ── Redis ───────────────────────────────────────────────────────────────
+  - name: lifeline-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru

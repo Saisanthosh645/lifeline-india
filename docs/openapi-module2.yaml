@@ -1,0 +1,333 @@
+openapi: 3.0.3
+info:
+  title: LIFELINE INDIA Identity API
+  version: 2.0.0
+  description: Production-grade authentication and identity API for Module 2.
+servers:
+  - url: http://localhost:8000
+paths:
+  /api/v1/auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '200':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+  /api/v1/auth/oauth/google:
+    post:
+      tags: [Auth]
+      summary: Authenticate via Google ID token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleOAuthRequest'
+      responses:
+        '200':
+          description: OAuth login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/verify-email/request-otp:
+    post:
+      tags: [Auth]
+      summary: Request email verification OTP
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OTP generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/verify-email/confirm-otp:
+    post:
+      tags: [Auth]
+      summary: Verify email using OTP
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/password/forgot:
+    post:
+      tags: [Auth]
+      summary: Start password reset flow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Reset flow initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/password/reset:
+    post:
+      tags: [Auth]
+      summary: Reset password with secure token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh token and issue new token pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Tokens refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke one refresh session
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Revoke all active sessions for current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All sessions revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/v1/profile/me:
+    get:
+      tags: [Profile]
+      summary: Get current profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+    patch:
+      tags: [Profile]
+      summary: Update profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+  /api/v1/profile/security:
+    get:
+      tags: [Profile]
+      summary: Get account security settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Security settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettingsResponse'
+    patch:
+      tags: [Profile]
+      summary: Update account security settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecuritySettingsUpdateRequest'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecuritySettingsResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    SignupRequest:
+      type: object
+      required: [full_name, email, password]
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        role: { type: string, enum: [citizen, hospital_admin, blood_bank_admin, ambulance_driver, super_admin] }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    GoogleOAuthRequest:
+      type: object
+      required: [id_token]
+      properties:
+        id_token: { type: string }
+    OtpVerifyRequest:
+      type: object
+      required: [otp]
+      properties:
+        otp: { type: string, minLength: 4, maxLength: 8 }
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    ResetPasswordRequest:
+      type: object
+      required: [token, new_password]
+      properties:
+        token: { type: string }
+        new_password: { type: string, minLength: 8, maxLength: 128 }
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string }
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 100 }
+        phone: { type: string, maxLength: 20 }
+    SecuritySettingsUpdateRequest:
+      type: object
+      properties:
+        login_alerts_enabled: { type: boolean }
+        trusted_device_mode: { type: boolean }
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, token_type]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, example: bearer }
+    UserPublic:
+      type: object
+      required: [id, full_name, email, role, is_verified, is_active]
+      properties:
+        id: { type: string, format: uuid }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        role: { type: string }
+        is_verified: { type: boolean }
+        is_active: { type: boolean }
+    AuthResponse:
+      type: object
+      required: [user, tokens]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserPublic'
+        tokens:
+          $ref: '#/components/schemas/TokenPair'
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    SecuritySettingsResponse:
+      type: object
+      required: [login_alerts_enabled, trusted_device_mode, active_session_count]
+      properties:
+        login_alerts_enabled: { type: boolean }
+        trusted_device_mode: { type: boolean }
+        active_session_count: { type: integer, minimum: 0 }
