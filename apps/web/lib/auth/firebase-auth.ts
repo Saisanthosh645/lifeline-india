@@ -10,7 +10,7 @@ import {
   updateProfile,
   getRedirectResult,
 } from "firebase/auth";
-import { auth, googleProvider, isFirebaseConfigured } from "./firebase";
+import { auth, googleProvider, getFirebaseConfigurationMessage, isFirebaseConfigured } from "./firebase";
 
 export type FirebaseUserSession = {
   id: string;
@@ -69,7 +69,7 @@ function getFirebaseErrorMessage(error: unknown, fallback = "Authentication fail
 
 export async function firebaseSignup(fullName: string, email: string, password: string): Promise<FirebaseUserSession> {
   if (!isFirebaseConfigured() || !auth) {
-    console.warn("Firebase is not configured; using a local demo session for signup.");
+    console.warn(getFirebaseConfigurationMessage());
     return createFallbackSession(email, fullName, "", true);
   }
 
@@ -98,7 +98,7 @@ export async function firebaseSignup(fullName: string, email: string, password: 
  */
 export async function firebaseLogin(email: string, password: string): Promise<FirebaseUserSession> {
   if (!isFirebaseConfigured() || !auth) {
-    console.warn("Firebase is not configured; using a local demo session for login.");
+    console.warn(getFirebaseConfigurationMessage());
     return createFallbackSession(email, email.split("@")[0] || "Citizen", "", true);
   }
 
@@ -124,7 +124,7 @@ export async function firebaseLogin(email: string, password: string): Promise<Fi
  */
 export async function firebaseGoogleLogin(): Promise<FirebaseUserSession> {
   if (!isFirebaseConfigured() || !auth || !googleProvider) {
-    throw new Error("Google sign-in is not available because Firebase is not configured for this environment.");
+    throw new Error(getFirebaseConfigurationMessage());
   }
 
   try {

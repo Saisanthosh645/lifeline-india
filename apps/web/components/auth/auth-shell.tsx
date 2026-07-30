@@ -9,6 +9,10 @@ import { z } from "zod";
 import { Mail, Lock, User, ShieldCheck, HeartHandshake, ArrowLeft, Activity, Compass, Flame } from "lucide-react";
 import { demoSignup, demoLogin, demoGoogleLogin, demoForgotPassword, demoResetPassword, getCurrentUser } from "@/lib/auth/demo-auth";
 import { useLifeline } from "@/lib/state-engine";
+import {
+  getFirebaseConfigurationMessage,
+  isFirebaseConfigured,
+} from "@/lib/firebase";
 
 const signupSchema = z.object({
   full_name: z.string().min(2, "Enter your full name"),
@@ -292,7 +296,11 @@ export function AuthShell() {
             )}
 
             {/* Status Messages */}
-            {statusMessage ? (
+            {!isFirebaseConfigured() ? (
+              <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-medium text-red-500">
+                <p>{getFirebaseConfigurationMessage()}</p>
+              </div>
+            ) : statusMessage ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
