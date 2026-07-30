@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 try:
+    import firebase_admin
     from firebase_admin import auth as firebase_auth
     from firebase_admin import credentials, initialize_app
+    from firebase_admin.exceptions import CertificateFetchError, ExpiredIdTokenError, InvalidIdTokenError
 except ImportError:  # pragma: no cover - optional runtime dependency
+    firebase_admin = None
     firebase_auth = None
     credentials = None
     initialize_app = None
+    CertificateFetchError = None
+    ExpiredIdTokenError = None
+    InvalidIdTokenError = None
 
 from app.core.deps import get_auth_service
 from app.schemas.auth import (
@@ -32,20 +39,58 @@ from app.utils.auth import get_current_user, get_current_user_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
+EXPECTED_FIREBASE_PROJECT_ID = "lifeline-india-66707"
+_firebase_admin_initialized = False
 
 
-try:
-    if initialize_app is not None:
-        if not os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON") and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-            initialize_app()
-        else:
-            service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-            if service_account_path:
-                initialize_app(credentials.Certificate(service_account_path))
-            else:
-                initialize_app(credentials.ApplicationDefault())
-except Exception as exc:  # pragma: no cover - runtime config dependent
-    logger.warning("Firebase Admin SDK initialization skipped: %s", exc)
+def _log_firebase_error(exc: Exception) -> None:
+    message = str(exc).strip()
+    if len(message) > 220:
+        message = message[:217] + "..."
+    logger.warning("Firebase Admin error: %s: %s", exc.__class__.__name__, message)
+
+
+def _initialize_firebase_admin() -> None:
+    global _firebase_admin_initialized
+
+    if _firebase_admin_initialized:
+        return
+
+    if firebase_admin is None or firebase_auth is None or initialize_app is None or credentials is None:
+        raise RuntimeError("Firebase Admin SDK is not available")
+
+    raw_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if not raw_service_account or not raw_service_account.strip():
+        raise RuntimeError("Missing Firebase Admin credentials. Set FIREBASE_SERVICE_ACCOUNT_JSON.")
+
+    try:
+        service_account_dict = json.loads(raw_service_account)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Malformed Firebase service-account JSON.") from exc
+
+    if not isinstance(service_account_dict, dict):
+        raise RuntimeError("Malformed Firebase service-account JSON.")
+
+    actual_project_id = service_account_dict.get("project_id")
+    if actual_project_id != EXPECTED_FIREBASE_PROJECT_ID:
+        raise RuntimeError(
+            f"Firebase project ID mismatch. Expected {EXPECTED_FIREBASE_PROJECT_ID}, got {actual_project_id or 'missing'}."
+        )
+
+    try:
+        certificate = credentials.Certificate(service_account_dict)
+    except Exception as exc:
+        raise RuntimeError("Failed to build Firebase Admin credentials from service-account JSON.") from exc
+
+    try:
+        initialize_app(
+            credential=certificate,
+            options={"projectId": EXPECTED_FIREBASE_PROJECT_ID},
+        )
+    except Exception as exc:
+        raise RuntimeError("Failed to initialize Firebase Admin SDK.") from exc
+
+    _firebase_admin_initialized = True
 
 
 @router.post(
@@ -141,9 +186,34 @@ async def firebase_google_login(
         raise HTTPException(status_code=500, detail="Firebase Admin SDK is not available")
 
     try:
+        _initialize_firebase_admin()
+    except RuntimeError as exc:
+        message = str(exc)
+        if message.startswith("Missing Firebase Admin credentials"):
+            raise HTTPException(status_code=500, detail=message) from exc
+        if message.startswith("Malformed Firebase service-account JSON"):
+            raise HTTPException(status_code=500, detail=message) from exc
+        if message.startswith("Firebase project ID mismatch"):
+            raise HTTPException(status_code=500, detail=message) from exc
+        raise HTTPException(status_code=500, detail="Firebase Admin SDK could not be initialized") from exc
+
+    try:
         decoded_token = firebase_auth.verify_id_token(payload.id_token)
-    except Exception as exc:  # pragma: no cover - runtime config dependent
-        raise HTTPException(status_code=401, detail="Invalid or expired Firebase token") from exc
+    except ExpiredIdTokenError as exc:
+        _log_firebase_error(exc)
+        raise HTTPException(status_code=401, detail="Firebase ID token has expired") from exc
+    except InvalidIdTokenError as exc:
+        _log_firebase_error(exc)
+        raise HTTPException(status_code=401, detail="Firebase ID token is invalid") from exc
+    except CertificateFetchError as exc:
+        _log_firebase_error(exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to verify Firebase ID token because Firebase certificates could not be fetched",
+        ) from exc
+    except Exception as exc:
+        _log_firebase_error(exc)
+        raise HTTPException(status_code=502, detail="Unable to verify Firebase ID token") from exc
 
     uid = str(decoded_token.get("uid") or "")
     email = (decoded_token.get("email") or "").strip().lower()
