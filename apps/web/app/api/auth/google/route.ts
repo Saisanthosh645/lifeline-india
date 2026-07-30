@@ -5,7 +5,11 @@ const backendBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_B
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const idToken = typeof body?.idToken === "string" ? body.idToken : body?.id_token;
+    const idToken = typeof body?.id_token === "string"
+      ? body.id_token
+      : typeof body?.idToken === "string"
+        ? body.idToken
+        : undefined;
 
     if (!idToken) {
       return NextResponse.json({ ok: false, detail: "Missing Firebase idToken" }, { status: 400 });

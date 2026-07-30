@@ -35,7 +35,7 @@ export async function exchangeGoogleAuthSession(idToken: string): Promise<Google
       Accept: "application/json",
     },
     credentials: "include",
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({ id_token: idToken }),
   });
 
   const payload = await response.json().catch(() => ({}));
