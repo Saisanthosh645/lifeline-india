@@ -74,7 +74,9 @@ def _initialize_firebase_admin() -> None:
     actual_project_id = service_account_dict.get("project_id")
     if actual_project_id != EXPECTED_FIREBASE_PROJECT_ID:
         raise RuntimeError(
-            f"Firebase project ID mismatch. Expected {EXPECTED_FIREBASE_PROJECT_ID}, got {actual_project_id or 'missing'}."
+            "Firebase project ID mismatch. "
+            f"Expected {EXPECTED_FIREBASE_PROJECT_ID}, "
+            f"got {actual_project_id or 'missing'}."
         )
 
     try:
