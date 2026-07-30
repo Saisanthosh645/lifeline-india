@@ -19,6 +19,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class FirebaseGoogleLoginRequest(BaseModel):
+    id_token: str = Field(min_length=10)
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

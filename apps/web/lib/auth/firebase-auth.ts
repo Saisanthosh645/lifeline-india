@@ -10,6 +10,7 @@ import {
   updateProfile,
   getRedirectResult,
 } from "firebase/auth";
+import { exchangeGoogleAuthSession } from "../api";
 import { auth, googleProvider, getFirebaseConfigurationMessage, isFirebaseConfigured } from "./firebase";
 
 export type FirebaseUserSession = {
@@ -128,18 +129,23 @@ export async function firebaseGoogleLogin(): Promise<FirebaseUserSession> {
   }
 
   try {
-    const userCredential = await signInWithPopup(auth, googleProvider);
-    const user = userCredential.user;
+    const popupResult = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = popupResult.user;
+    const idToken = await firebaseUser.getIdToken(true);
+
+    console.info("Google auth popup succeeded", { uid: firebaseUser.uid, email: firebaseUser.email });
+
+    const sessionResponse = await exchangeGoogleAuthSession(idToken);
 
     const sessionUser: FirebaseUserSession = {
-      id: user.uid,
-      full_name: user.displayName || "Google User",
-      email: user.email || "",
-      phone: user.phoneNumber || "",
-      role: "citizen",
-      is_verified: user.emailVerified,
-      is_active: true,
-      photoUrl: user.photoURL || undefined,
+      id: sessionResponse.user.id,
+      full_name: sessionResponse.user.full_name,
+      email: sessionResponse.user.email,
+      phone: sessionResponse.user.phone || "",
+      role: sessionResponse.user.role,
+      is_verified: sessionResponse.user.is_verified,
+      is_active: sessionResponse.user.is_active,
+      photoUrl: firebaseUser.photoURL || undefined,
       isLoggedIn: true,
     };
 

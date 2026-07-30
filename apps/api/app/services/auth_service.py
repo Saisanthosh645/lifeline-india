@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -18,6 +19,8 @@ from app.core.security import (
 )
 from app.models.auth import User
 from app.repositories.auth_repository import AuthRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -152,6 +155,40 @@ class AuthService:
         await self.repo.create_refresh_token(user_id=user.id, token_hash=new_token_hash, expires_at=expires_at)
         await self.session.commit()
         return user, self._create_access_token(user), new_token
+
+    async def firebase_google_login(
+        self,
+        *,
+        email: str,
+        full_name: str,
+        firebase_uid: str,
+        email_verified: bool,
+        picture: str | None = None,
+    ) -> tuple[User, str, str]:
+        logger.info("Firebase Google login requested", extra={"email": email, "uid": firebase_uid})
+
+        user = await self.repo.get_user_by_email(email)
+        if not user:
+            placeholder_password = secrets.token_urlsafe(24)
+            user = await self.repo.create_user(
+                email=email,
+                full_name=full_name or email.split("@", 1)[0],
+                hashed_password=self._hash_password(placeholder_password),
+            )
+        if not user.is_verified and email_verified:
+            user.is_verified = True
+        if not user.full_name and full_name:
+            user.full_name = full_name
+        await self.session.commit()
+
+        access_token = self._create_access_token(user)
+        refresh_token = self._create_refresh_token()
+        token_hash = self._hash_token(refresh_token)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+        await self.repo.create_refresh_token(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+        await self.session.commit()
+        logger.info("Firebase Google login completed", extra={"user_id": str(user.id)})
+        return user, access_token, refresh_token
 
     async def logout(self, refresh_token: str) -> None:
         token_hash = self._hash_token(refresh_token)

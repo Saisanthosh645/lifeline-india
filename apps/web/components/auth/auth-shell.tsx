@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -41,6 +42,7 @@ export function AuthShell() {
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [statusType, setStatusType] = useState<"success" | "error" | "info">("info");
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const { login: engineLogin } = useLifeline();
 
   const redirectTo = typeof window !== "undefined"
@@ -95,10 +97,9 @@ export function AuthShell() {
     setIsLoading(true);
     try {
       const user = await demoGoogleLogin();
-      // Sync with global state engine
       engineLogin(user.full_name, user.email, user.phone || "", user.photoUrl);
       showMessage("Google Sign-In successful! Redirecting...", "success");
-      setTimeout(() => { window.location.href = redirectTo; }, 1000);
+      router.replace(redirectTo);
     } catch (err: any) {
       showMessage(err.message || "Google login failed", "error");
     } finally {

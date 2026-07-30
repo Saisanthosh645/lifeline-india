@@ -27,6 +27,27 @@ export const api: AxiosInstance = axios.create({
   },
 });
 
+export async function exchangeGoogleAuthSession(idToken: string): Promise<GoogleAuthResponse> {
+  const response = await fetch("/api/auth/google", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ idToken }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const detail = typeof payload?.detail === "string" ? payload.detail : "Google authentication failed";
+    throw new Error(detail);
+  }
+
+  return payload as GoogleAuthResponse;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -67,6 +88,11 @@ export type SecuritySettingsResponse = {
 
 export type MessageResponse = {
   message: string;
+};
+
+export type GoogleAuthResponse = {
+  ok: boolean;
+  user: UserPublic;
 };
 
 // ── Healthcare Types ────────────────────────────────────────────────────

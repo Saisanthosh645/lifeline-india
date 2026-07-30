@@ -1,10 +1,22 @@
 from __future__ import annotations
 
+import logging
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status
+
+try:
+    from firebase_admin import auth as firebase_auth
+    from firebase_admin import credentials, initialize_app
+except ImportError:  # pragma: no cover - optional runtime dependency
+    firebase_auth = None
+    credentials = None
+    initialize_app = None
 
 from app.core.deps import get_auth_service
 from app.schemas.auth import (
     AuthResponse,
+    FirebaseGoogleLoginRequest,
     ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
@@ -19,6 +31,21 @@ from app.services.auth_service import AuthService
 from app.utils.auth import get_current_user, get_current_user_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
+
+
+try:
+    if initialize_app is not None:
+        if not os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON") and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            initialize_app()
+        else:
+            service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+            if service_account_path:
+                initialize_app(credentials.Certificate(service_account_path))
+            else:
+                initialize_app(credentials.ApplicationDefault())
+except Exception as exc:  # pragma: no cover - runtime config dependent
+    logger.warning("Firebase Admin SDK initialization skipped: %s", exc)
 
 
 @router.post(
@@ -89,6 +116,55 @@ async def login(
         user, access_token, refresh_token = await service.login(payload.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+    return AuthResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=UserResponse.model_validate(
+            {
+                "id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_verified": user.is_verified,
+                "is_active": user.is_active,
+            }
+        ),
+    )
+
+
+@router.post("/firebase/google", response_model=AuthResponse)
+async def firebase_google_login(
+    payload: FirebaseGoogleLoginRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
+    if firebase_auth is None:
+        raise HTTPException(status_code=500, detail="Firebase Admin SDK is not available")
+
+    try:
+        decoded_token = firebase_auth.verify_id_token(payload.id_token)
+    except Exception as exc:  # pragma: no cover - runtime config dependent
+        raise HTTPException(status_code=401, detail="Invalid or expired Firebase token") from exc
+
+    uid = str(decoded_token.get("uid") or "")
+    email = (decoded_token.get("email") or "").strip().lower()
+    full_name = (decoded_token.get("name") or email.split("@", 1)[0] or "Google User").strip()
+    picture = decoded_token.get("picture")
+    email_verified = bool(decoded_token.get("email_verified"))
+
+    if not uid or not email:
+        raise HTTPException(status_code=401, detail="Invalid or expired Firebase token")
+
+    try:
+        user, access_token, refresh_token = await service.firebase_google_login(
+            email=email,
+            full_name=full_name,
+            firebase_uid=uid,
+            email_verified=email_verified,
+            picture=picture,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,

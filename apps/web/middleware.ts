@@ -18,24 +18,23 @@ export function middleware(request: NextRequest): NextResponse {
     const isProtected = protectedRoutes.some((route) => path.startsWith(route));
     if (!isProtected) return NextResponse.next();
 
-    // Read token from cookie — safe: cookies.get() returns undefined if missing.
     const accessToken = request.cookies.get("ll_access_token")?.value;
 
-    // If no token found, redirect to auth page (production) or allow through (demo).
     if (!accessToken) {
       if (isDemoMode()) {
-        // Demo mode: client-side JS checks localStorage instead.
         return NextResponse.next();
       }
-      // Production: redirect unauthenticated users to login.
+
       const loginUrl = new URL("/auth", request.url);
+      const requestedPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+      if (requestedPath !== "/auth") {
+        loginUrl.searchParams.set("redirect", requestedPath);
+      }
       return NextResponse.redirect(loginUrl);
     }
 
     return NextResponse.next();
   } catch {
-    // Defensive: if cookie parsing somehow fails, let the request through.
-    // Client-side auth will handle the redirect if needed.
     return NextResponse.next();
   }
 }
